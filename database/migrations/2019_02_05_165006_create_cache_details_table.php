@@ -20,6 +20,7 @@ class CreateCacheDetailsTable extends Migration
             $table->string('lat',40);
             $table->string('lng',40);
             $table->string('cachename',120);
+            $table->string('place_id',200);
             $table->timestamps();
         });
     }

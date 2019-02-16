@@ -30,8 +30,9 @@
         @include('inc.panel')
     </div>
     @include('inc.stats')
+    @include('inc.review')
     <script src="./js/api.js"></script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAp9NsRWvUE_XNCVXQYqYDaWrOA_A9ldLs&callback=initMap"
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ Config::get('googleapikey.GoogleAPIKey') }}&callback=initMap"
         async defer></script>
 </body>
 </html>

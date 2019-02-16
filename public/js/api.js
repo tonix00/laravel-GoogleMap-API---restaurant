@@ -6,6 +6,7 @@ var places = [];
 var directionsDisplay;
 var directionsService;
 var currentIndex = 0;
+
 var cebu = {
     lat: 10.3157,
     lng: 123.8854
@@ -24,11 +25,43 @@ function initMap() {
     directionsDisplay.setPanel(document.getElementById('direction-panel'));
     getRestaurants();
     getPlaces();
+
+    map.addListener('zoom_changed', function() {
+ 
+        if(map.zoomDoNotSearch==true)
+        {
+            map.zoomDoNotSearch = false;
+            return false;
+        }
+
+        let zoomLevel = map.getZoom();
+        let center = map.getCenter();
+        let lat = center.lat();
+        let lng = center.lng();
+        let latLng = {
+            lat: lat,
+            lng: lng
+        };
+
+        let radius = 2;
+        if(zoomLevel == 15) radius = 1;
+        else if(zoomLevel == 16) radius = 0.8;
+        else if(zoomLevel == 17) radius = 0.6;
+        else if(zoomLevel == 18) radius = 0.4;
+        else if(zoomLevel <= 14) radius = 2;
+        else radius = 0.2;
+            
+        radius = (radius / 6378.1) * 6378100; //compute kilometer
+        clearCircles(null);
+        searchByRadius(lat,lng,radius);
+
+    });
 }
 
 function getRestaurants() {
 
     $.getJSON("./getrestaurants", function (e) {
+    
         loadMarker(e);
         loadInfoToPanel(e);
         setRestaurants(e);
@@ -36,7 +69,10 @@ function getRestaurants() {
 }
 
 function loadMarker(e) {
+    
+    clearMarkers();
     markers = [];
+
     $.each(e.results, function (i, result) {
         addMarker(result, false, i);
     });
@@ -98,11 +134,13 @@ $(document).ready(function () {
 
 // load info to layer
 function loadInfoToPanel(e) {
+    loadlist(e,'#panelContent');
+}
 
+function loadlist(e,id){
     let info = "";
     let index = 0;
-
-    $('#panelContent').html("");
+    $(id).html("");
     $.each(e.results, function (i, result) {
         
         let address_lat = result.geometry.location.lat;
@@ -111,11 +149,11 @@ function loadInfoToPanel(e) {
         info = info + '<div id="panelContentDetail"><a href="#" onclick="setRestaurantMarker(' + index + ')"><b>' + result.name + "</b></a><br />" + result.formatted_address + 
         '<br /><a href="#" onclick="calculateAndDisplayRoute(' + address_lat + ',' + address_lng + ',' + index + ')"><small>Get Direction</small></a>' +
         '&nbsp;|&nbsp;<small><a href="#" onclick="showStats(' + index + ')">View Statistics</a></small>' +
+        '&nbsp;|&nbsp;<small><a href="#" onclick="showReview(' + index + ')">More Info...</a></small>' +
         "</div>";
         index++;
     });
-
-    $('#panelContent').html(info);
+    $(id).html(info);
 }
 
 function setRestaurantMarker(index) {
@@ -131,7 +169,6 @@ function calculateAndDisplayRoute(end_lat, end_lng, index) {
 
     //Listen for click on map
     var listenerHandle = google.maps.event.addListener(map, 'click', function (event) {
-        clearMarkers();
         setRestaurantMarker(index);
         myCurrentLocation = event.latLng;
         let marker = new google.maps.Marker({
@@ -148,13 +185,14 @@ function calculateAndDisplayRoute(end_lat, end_lng, index) {
     });
 
     if (myCurrentLocation) {
-        clearMarkers();
+       
         //var start = { lat: 10.3457599, lng: 123.9132848};
         var start = myCurrentLocation;
         var end = {
             lat: end_lat,
             lng: end_lng
         };
+        clearMarkers();
         directionsDisplay.setMap(map);
         directionsService.route({
             origin: start,
@@ -162,6 +200,7 @@ function calculateAndDisplayRoute(end_lat, end_lng, index) {
             travelMode: 'DRIVING'
         }, function (response, status) {
             if (status === 'OK') {
+                map.zoomDoNotSearch = true;
                 directionsDisplay.setDirections(response);
                 myCurrentLocation = null;
             } else {
@@ -179,12 +218,12 @@ function calculateAndDisplayRoute(end_lat, end_lng, index) {
     } else {
         geoMessage('Please choose a start location. To select, just right click on the map.');
     }
-
 }
 
 function directionBack() {
     showPanel("panelContent");
     directionsDisplay.setMap(null);
+    map.zoomDoNotSearch = true;
     map.setZoom(14);
     map.setCenter(cebu);
     setRestaurantMarker(currentIndex);
@@ -195,14 +234,16 @@ function showPanel(name) {
     $("#panelContent").hide();
     $("#byRadiusContent").hide();
     $("#specificFoodContent").hide();
-    if (name == 'direction-panel')
+    
+    if (name == 'direction-panel'){
         $("#direction-panel").show();
-    else if (name == 'panelContent')
+    }else if (name == 'panelContent'){
         $("#panelContent").show();
-    else if (name == 'byRadiusContent')
+    }else if (name == 'byRadiusContent'){
         $("#byRadiusContent").show();
-    else if (name == 'specificFoodContent')
+    }else if (name == 'specificFoodContent'){
         $("#specificFoodContent").show();
+    }   
 }
 
 function geoMessage(msg) {
@@ -230,9 +271,11 @@ function showRadiusPalnel() {
         }));
     });
     for (let x = 1; x <= 5; x++) {
+        let areaStr = 'Kilometers';
+        if(x==1) areaStr = 'Kilometer';
         $('#radius').append($('<option>', {
             value: x,
-            text: `${x} Kilometers`
+            text: `${x} ${areaStr}`
         }));
     }
 }
@@ -250,7 +293,6 @@ function drawCircle() {
     };
 
     radius = (radius / 6378.1) * 6378100; //compute kilometer
-    clearMarkers();
     directionsDisplay.setMap(null);
 
     // clear circle
@@ -274,6 +316,7 @@ function drawCircle() {
     });
 
     circles.push(circle);
+    map.zoomDoNotSearch = true;
     map.setZoom(14);
     map.setCenter(latLng);
 
@@ -284,8 +327,11 @@ function searchByRadius(lat,lng,radius)
 {
     $.getJSON(`./getbyradius/${lat}/${lng}/${radius}`, function (e) {
         loadMarker(e);
-        loadInfoToPanel(e);
         setRestaurants(e);
+
+        loadInfoToPanel(e);
+        loadlist(e,'#searchByRadiusResult');
+        loadlist(e,'#searchFoodResult');
     });
 }
 
@@ -298,11 +344,11 @@ function searchBySpecificFood(me)
         lng: lng
     };
 
+    map.zoomDoNotSearch = true;
     map.setZoom(14);
     map.setCenter(latLng);
 
     let keyword = $('#searchFood').val();
-    clearMarkers();
     clearCircles(null);
     directionsDisplay.setMap(null);
 
@@ -311,12 +357,16 @@ function searchBySpecificFood(me)
     }else{
         me.disabled = true;
         $.getJSON(`./getbyspecific/${lat}/${lng}/?keyword=${keyword}`, function (e) {
+            map.zoomDoNotSearch = true;
             if(e==null || e==''|| e.results.length==0){
                 alert('No record found.');
             }else{
                 loadMarker(e);
-                loadInfoToPanel(e);
                 setRestaurants(e);
+                
+                loadInfoToPanel(e);
+                loadlist(e,'#searchByRadiusResult');
+                loadlist(e,'#searchFoodResult');
             } 
             me.disabled = false;
         });
@@ -332,18 +382,22 @@ function searchByType(foodType)
         lng: lng
     };
 
+    map.zoomDoNotSearch = true;
     map.setZoom(14);
     map.setCenter(latLng);
-    showPanel("panelContent");
     
-    clearMarkers();
     clearCircles(null);
     directionsDisplay.setMap(null);
-    $.getJSON(`./getbytype/${lat}/${lng}/${foodType}`, function (e) {
+
+    $.getJSON(`./getbytype/${lat}/${lng}/${foodType}`, function (e) {   
         loadMarker(e);
-        loadInfoToPanel(e);
         setRestaurants(e);    
-    });
+        showPanel('panelContent');
+
+        loadInfoToPanel(e);
+        loadlist(e,'#searchByRadiusResult');
+        loadlist(e,'#searchFoodResult');
+   });
 }
 
 function clearCircles(circle)
@@ -370,7 +424,6 @@ function showStats(index){
     $("#visit_date").attr('max', year + "-" + month + "-" + day);
     $(".ui-dialog-titlebar-close").text('x');
 
-    let restaurant = restaurants[index];
     let name = restaurants[index].name;
     let address = restaurants[index].formatted_address;
 
@@ -394,6 +447,8 @@ function saveRealStatInfo(){
     let food = $("#stat_specific_food").val();
     let validatorOK = true;
 
+    let place_id = restaurants[index].place_id;
+
     if(vdate==null || vdate==""){
         validatorOK = false;
     }else if(food==null || food==""){
@@ -404,13 +459,10 @@ function saveRealStatInfo(){
         alert('Please enter a value to all the fields.');
     }else{
         $("#saveStatbutton").disabled = true;
-        let lat = restaurants[index].geometry.location.lat;
-        let lng = restaurants[index].geometry.location.lng;
-        let name = restaurants[index].name;
 
-        let urlSaveFood = `./stat/savefood/${lat}/${lng}?n=${name}&f=${food}`;
+        let urlSaveFood = `./stat/savefood/${place_id}?f=${food}`;
         $.get(urlSaveFood, function (e) {
-            let urlSaveVisit = `./stat/savevisit/${lat}/${lng}?n=${name}&v=${vdate}`;
+            let urlSaveVisit = `./stat/savevisit/${place_id}?v=${vdate}`;
             $.get(urlSaveVisit, function (e) {
                 $("#saveStatbutton").disabled = false;
                 alert('Thank you. You can add more entry as you want or you may proceed or skip the survey.');
@@ -433,20 +485,20 @@ function showRealStatInfo(){
     let monthName = monthNames[d.getMonth()];
 
     let index = $("#statIndex").val();
-    let lat = restaurants[index].geometry.location.lat;
-    let lng = restaurants[index].geometry.location.lng;
-    let name = restaurants[index].name;
+    let place_id = restaurants[index].place_id;
 
-    let urlGetFood = `./stat/foods/${lat}/${lng}?n=${name}`;
-    let urlGetVisit = `./stat/vistors/${lat}/${lng}?n=${name}`;
+    let urlGetFood = `./stat/foods/${place_id}`;
+    let urlGetVisit = `./stat/vistors/${place_id}`;
 
     $( "#statRestaurantSurvey" ).hide();
     $( "#realStatInfo" ).show();
     $( "#ulFoodList" ).empty();
 
     $.getJSON(urlGetFood, function (foods) {
-        if(foods.length){
-            for(i=0; i<foods.length;i++){
+        map.zoomDoNotSearch = true;
+        if(foods.length>1){
+	        //bug fix php json encode - 'echo not working from this server properly'
+            for(i=1; i<foods.length;i++){
                 $( "#ulFoodList" ).append(`<li>${foods[i]}</li>`);
             }       
         }else{
@@ -455,6 +507,7 @@ function showRealStatInfo(){
     });
 
     $.getJSON(urlGetVisit, function (chartsData) {
+        map.zoomDoNotSearch = true;
         let chartTitle = ["Days","Visitors"];
         let chartArray = Array();
         chartArray.push(chartTitle);
@@ -477,4 +530,63 @@ function drawChart(chartDetails,month) {
     };
     var chart = new google.visualization.LineChart(document.getElementById('curve_chart'));
     chart.draw(data, options);
+}
+
+// stats
+function showReview(index){
+    let place_id = restaurants[index].place_id;
+
+    $( "#ReviewWindow" ).dialog({
+        width: 800,
+        height:500    
+    });
+    $("#restaurantReview").html("");
+    let urlReview = `./review/${place_id}`;
+    $.getJSON(urlReview, function (e) {
+        
+        let name = restaurants[index].name;
+        let address = restaurants[index].formatted_address;
+        let phone_number = e.formatted_phone_number;
+        let rating = e.rating;
+
+        let restaurantInfo;
+        restaurantInfo = `<b>${name}</b><br><small>${address}</small>`;
+        restaurantInfo = restaurantInfo + `<br><small>Phone : ${phone_number} </small>`;
+        restaurantInfo = restaurantInfo + `<br><small>Rating : ${rating} </small>`;
+
+        $("#restaurantInfo").html(restaurantInfo);
+
+        $("#restaurantReview").html("");
+        let reviewInfos="";
+        for (i = 0; i < e.reviews.length; i++) {
+            let author_name = e.reviews[i].author_name;
+            let profile_photo_url = e.reviews[i].profile_photo_url;
+            let rating = e.reviews[i].rating;
+            let text = e.reviews[i].text;
+
+            let reviewInfo = `<div id="panelContentDetail">
+                <table cellspacing="10" cellpadding='10px' width="100%">
+                    <tr>
+                        <td valign="top" width="25%" align="center"><img src="${profile_photo_url}"></td>
+                        <td  valign="top">
+                            <table cellspacing="10">
+                                <tr>
+                                    <td><b>${author_name}</b></td>
+                                </tr>
+                                <tr> 
+                                    <td><small>Rating</small> : <b>${rating}</b></td>
+                                </tr>
+                                <tr>
+                                    <td><small>${text}</small></td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </div>`;
+            reviewInfos =  reviewInfos + reviewInfo;
+        }
+        $("#restaurantReview").html(reviewInfos);
+        
+    });
 }

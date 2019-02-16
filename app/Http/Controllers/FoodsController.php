@@ -7,87 +7,41 @@ use App\Food;
 
 class FoodsController extends Controller
 {
-    private $data = array();
-
-    public function __construct()
-    {
-        $this->setParam(); 
-    }
     
-    private function setParam()
+    public function foods($place_id)
     {
-        foreach($_REQUEST as $key => $value)
-        {
-            $this->data[$key] = $value;
-        }
-    }
-
-    public function foods($lat,$lng)
-    {
-        $restaurantid = $this->createID($lat,$lng);
-        $foods = $this->getFoods($restaurantid);
+        $foodModel = new Food();
+        $foods = $foodModel->getFoods($place_id);
 
         $toJson = array();
+	    $toJson[]= 'dummy food';
         foreach($foods as $i => $food)
         {
             $toJson[]= $food->food;
         }
-        echo json_encode($toJson);
+        $x = json_encode($toJson);
+        ob_start();
+        echo $x;
+        flush();
     }
 
-    public function saveFood($lat,$lng)
+    public function saveFood($place_id)
     {
         $cusfood = "";
-        if(isset($this->data['f']) && !empty($this->data['f'])){
-            $cusfood = $this->data['f'];
+        if(isset($_GET['f']) && !empty($_GET['f'])){
+            $cusfood = $_GET['f'];
         }  
-        $restaurantid = $this->createID($lat,$lng);
 
         // check food exist
-        $food = Food::where('restaurantid', $restaurantid)
+        $food = Food::where('place_id', $place_id)
             ->where('Food', $cusfood)
             ->first();
 
         // if not - save
         if($food==null){
-            $this->setFood($restaurantid,$cusfood);
+            $foodModel = new Food();
+            $foodModel->setFood($cusfood,$place_id);
         }
-        
     }
 
-    private function createID($lat,$lng)
-    {
-        $name = "";
-        if(isset($this->data['n']) && !empty($this->data['n'])){
-            $name = $this->data['n'];
-        }
-        return md5($lat.$lng.$name);
-    }
-
-    private function setFood($restaurantid,$cusfood)
-    {
-        $food = new Food();
-        $food->restaurantid = $restaurantid;
-        $food->food = $cusfood;
-        $food->save();
-    }
-
-    private function getFoods($restaurantid)
-    {
-        return Food::where('restaurantid',$restaurantid)->get();
-    }
-
-    public function __set( $key, $value ){
-		if($key && $value){
-			$this->data[$key] = $value;
-		}
-	}
-
-	public function __get( $key ){
-		if(isset($this->data[$key]) && $this->data[$key]){
-			return $this->data[$key];
-		}else{
-			return "";
-		}
-	}
 }

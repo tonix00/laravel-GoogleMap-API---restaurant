@@ -100,6 +100,18 @@ body {
 /* hide other panel */
 #direction-panel, #specificFoodContent, #byRadiusContent{ display: none; }
 
+#searchByRadiusResult, #searchFoodResult{
+    overflow-y: scroll;
+    overflow-x: hidden;
+    height: 300px;
+}
+
+#searchByRadiusResult{
+    height: 290px;
+}
+#searchFoodResult{
+    height: 330px;
+}
 /* stats*/
 button.ui-dialog-titlebar-close{
     color:black;

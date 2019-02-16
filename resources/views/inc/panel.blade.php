@@ -12,6 +12,8 @@
         <br>
         <button type="submit" class="btn btn-default" onclick="searchBySpecificFood(this)">Search</button>
     </div>
+    <div id="searchFoodResult"></div>
+    
 </div>
 <div class="panel-body" id='byRadiusContent'>
     <div class="form-group" id="radiusBody">
@@ -22,4 +24,5 @@
         <br>
         <button type="button" class="btn btn-default" onclick='drawCircle()'>Draw Circle</button>
     </div>
+    <div id="searchByRadiusResult"></div>
 </div>

@@ -17,6 +17,7 @@ class CreateFoodsTable extends Migration
             $table->increments('id');
             $table->string('restaurantid',150);
             $table->string('food',255);
+            $table->string('place_id',200);
             $table->timestamps();
         });
     }

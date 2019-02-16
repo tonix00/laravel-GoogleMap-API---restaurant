@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
 
-class CreateVisitorStatisticsTable extends Migration
+class CreateReviewsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,11 +13,13 @@ class CreateVisitorStatisticsTable extends Migration
      */
     public function up()
     {
-        Schema::create('visitor_statistics', function (Blueprint $table) {
+        Schema::create('reviews', function (Blueprint $table) {
             $table->increments('id');
-            $table->string('restaurantid',150);
-            $table->string('place_id',200);
-            $table->date('visited_at');
+            $table->string('author_name');
+            $table->string('profile_photo_url');
+            $table->double('rating');
+            $table->string('text',1000);
+            $table->integer('hotel_id'); 
             $table->timestamps();
         });
     }
@@ -29,6 +31,6 @@ class CreateVisitorStatisticsTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('visitor_statistics');
+        Schema::dropIfExists('reviews');
     }
 }
